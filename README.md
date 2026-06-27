@@ -17,8 +17,10 @@ Visual Paradigm and the panelled, professional feel of Altium Designer.
   (any 2 constrain the 3rd via `OD = ID + 2·t`), tag, manufacturer, part #, notes.
 - 📐 **Scale, tag, rotate** — resize handles on every element, editable ID tag,
   rotation, plus per-item BOM metadata.
-- 🖱️ **CAD-style controls** — middle-drag to pan; left-drag to box-select
-  (drag right = enclose/blue, drag left = touch/green). `Ctrl+S` save, `Ctrl+O` open.
+- 🖱️ **CAD-style controls** — middle-drag pan; left-drag box-select (drag right =
+  enclose/blue, drag left = touch/green); **Ctrl-drag** to duplicate; **Alt-drag**
+  for smooth/un-snapped moves; **Alt-resize** for symmetric scaling;
+  **double-click** to rename; **`f`** fits the view; `Ctrl+S` save, `Ctrl+O` open.
 - 🌗 **Light & dark mode** — one-click toggle, remembered between sessions.
 - 💾 **Native + portable export** — save/open the editable `.pidproj` format, or
   export a **PNG**, **SVG**, or printable **PDF**.

@@ -27,6 +27,9 @@ menu to prioritise from.
 - **Mouse/keys** — middle-drag pan; left-drag box-select with window/crossing
   (blue/green) by direction; `Ctrl+S` save, `Ctrl+O` open; unsaved-change
   warnings on new/open/close.
+- **Editing gestures** — Ctrl-drag duplicate; Alt-drag smooth (un-snapped);
+  Alt-resize symmetric/center scaling; double-click to rename ID inline;
+  `f` fits the view to screen.
 
 ## Iteration 3 — Diagram fidelity
 

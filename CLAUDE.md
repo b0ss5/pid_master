@@ -84,10 +84,16 @@ src/
 - **Connections:** `ConnectionMode.Loose` + four `type="source"` handles per node
   let any port connect to any other (draw.io-style).
 - **Mouse/keys:** middle-drag pans; left-drag box-selects (drag right = window/
-  blue/enclose, drag left = crossing/green/touch). `Ctrl/Cmd+S` saves the
-  `.pidproj`, `Ctrl/Cmd+O` opens. A `dirty` flag (set by real edits, not by
-  React Flow's load-time measurement) drives unsaved-change warnings on
-  new/open/close.
+  blue/enclose, drag left = crossing/green/touch); **Ctrl-drag** a node leaves a
+  duplicate behind (`onNodeDragStart`→`duplicateNodeInPlace`); **Alt** while
+  dragging = smooth/un-snapped (`snapToGrid={!altPressed}`); **Alt** while
+  resizing = symmetric/center scaling (handled in `EquipmentNode`'s
+  `shouldResize`, which returns `false` to override React Flow's one-sided
+  resize and calls `setNodeBounds`); **double-click** a node renames its ID tag
+  inline; **`f`** fits the view; `Ctrl/Cmd+S` saves the `.pidproj`,
+  `Ctrl/Cmd+O` opens. `Shift` is the multi-select modifier (Ctrl is reserved for
+  drag-duplicate). A `dirty` flag (set by real edits, not by React Flow's
+  load-time measurement) drives unsaved-change warnings on new/open/close.
 - **IDs:** node ids come from `nextId()` in the store; tag numbers from
   per-prefix `counters`. There is no quantity field — each instance is one item.
 

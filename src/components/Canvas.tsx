@@ -1,4 +1,11 @@
-import { useCallback, useRef, useState, type DragEvent, type MouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent,
+} from 'react';
 import {
   Background,
   BackgroundVariant,
@@ -8,12 +15,25 @@ import {
   ReactFlow,
   SelectionMode,
   useReactFlow,
+  type Node,
   type OnSelectionChangeParams,
 } from '@xyflow/react';
 import { useStore } from '../store/useStore';
 import EquipmentNode from './nodes/EquipmentNode';
 
 const nodeTypes = { equipment: EquipmentNode };
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  const tag = el.tagName;
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    el.isContentEditable
+  );
+}
 
 export default function Canvas() {
   const nodes = useStore((s) => s.nodes);
@@ -24,8 +44,40 @@ export default function Canvas() {
   const onConnect = useStore((s) => s.onConnect);
   const addNode = useStore((s) => s.addNode);
   const setSelection = useStore((s) => s.setSelection);
+  const duplicateNodeInPlace = useStore((s) => s.duplicateNodeInPlace);
 
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
+
+  // Alt = smooth (un-snapped) drag; f = fit view.
+  const [altPressed, setAltPressed] = useState(false);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') {
+        setAltPressed(true);
+      } else if (
+        (e.key === 'f' || e.key === 'F') &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !isEditableTarget(e.target)
+      ) {
+        e.preventDefault();
+        fitView({ padding: 0.2, duration: 300 });
+      }
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setAltPressed(false);
+    };
+    const reset = () => setAltPressed(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', reset);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', reset);
+    };
+  }, [fitView]);
 
   // Direction-aware box selection: drag right = window (fully enclosed, blue),
   // drag left = crossing (touch, green) — mirroring CAD tools.
@@ -75,6 +127,14 @@ export default function Canvas() {
     setSelectDir(null);
   }, []);
 
+  // Ctrl/Cmd-drag a node to leave a duplicate behind. (DOM event, not React's.)
+  const onNodeDragStart = useCallback(
+    (event: globalThis.MouseEvent | TouchEvent, node: Node) => {
+      if (event.ctrlKey || event.metaKey) duplicateNodeInPlace(node.id);
+    },
+    [duplicateNodeInPlace],
+  );
+
   const onSelectionChange = useCallback(
     ({ nodes: selNodes, edges: selEdges }: OnSelectionChangeParams) => {
       const nodeId = selNodes.length === 1 ? selNodes[0].id : null;
@@ -103,10 +163,12 @@ export default function Canvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeDragStart={onNodeDragStart}
         onSelectionChange={onSelectionChange}
         connectionMode={ConnectionMode.Loose}
         colorMode={theme}
         deleteKeyCode={['Delete', 'Backspace']}
+        multiSelectionKeyCode="Shift"
         defaultEdgeOptions={{ type: 'smoothstep' }}
         panOnDrag={[1]}
         selectionOnDrag
@@ -115,7 +177,7 @@ export default function Canvas() {
         minZoom={0.1}
         maxZoom={4}
         fitView
-        snapToGrid
+        snapToGrid={!altPressed}
         snapGrid={[8, 8]}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />

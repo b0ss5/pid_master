@@ -42,9 +42,12 @@ interface AppState {
   addNode: (symbolId: string, position: XYPosition) => void;
   updateNodeData: (id: string, patch: Partial<EquipmentData>) => void;
   setNodeSize: (id: string, width: number, height: number) => void;
+  setNodeBounds: (id: string, x: number, y: number, width: number, height: number) => void;
   updateEdgeData: (id: string, data: PipeData) => void;
   deleteSelected: () => void;
   duplicateSelected: () => void;
+  /** Clone a node in place (used by Ctrl-drag duplicate). */
+  duplicateNodeInPlace: (id: string) => void;
 
   // Selection
   setSelection: (nodeId: string | null, edgeId: string | null) => void;
@@ -198,6 +201,16 @@ export const useStore = create<AppState>((set, get) => ({
     persist(get());
   },
 
+  setNodeBounds: (id, x, y, width, height) => {
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
+        n.id === id ? { ...n, position: { x, y }, width, height } : n,
+      ),
+      dirty: true,
+    }));
+    persist(get());
+  },
+
   updateEdgeData: (id, data) => {
     set((s) => ({
       edges: s.edges.map((e) => (e.id === id ? { ...e, data } : e)),
@@ -247,6 +260,29 @@ export const useStore = create<AppState>((set, get) => ({
       selectedEdgeId: null,
       dirty: true,
     }));
+    persist(get());
+  },
+
+  duplicateNodeInPlace: (id) => {
+    const original = get().nodes.find((n) => n.id === id);
+    if (!original) return;
+    const symbol = getSymbol(original.data.symbolId);
+    const counters = { ...get().counters };
+    let label = `${original.data.label}-copy`;
+    if (symbol) {
+      const seq = (counters[symbol.tagPrefix] ?? 0) + 1;
+      counters[symbol.tagPrefix] = seq;
+      label = `${symbol.tagPrefix}-${100 + seq}`;
+    }
+    // The clone stays at the source position; the original keeps being dragged.
+    const copy: EquipmentNode = {
+      ...original,
+      id: nextId(),
+      selected: false,
+      dragging: false,
+      data: { ...original.data, label },
+    };
+    set((s) => ({ nodes: [...s.nodes, copy], counters, dirty: true }));
     persist(get());
   },
 
