@@ -11,9 +11,10 @@ import { getSymbol } from '../../lib/symbols';
 const SYMBOL_STYLE: CSSProperties = {
   stroke: 'currentColor',
   fill: 'none',
-  strokeWidth: 4,
+  strokeWidth: 2.5,
   strokeLinecap: 'round',
   strokeLinejoin: 'round',
+  overflow: 'visible',
 };
 
 /**
@@ -45,7 +46,7 @@ function EquipmentNodeComponent({ data, selected }: NodeProps<EquipmentNodeType>
       >
         {symbol ? (
           <svg
-            viewBox="0 0 100 100"
+            viewBox={symbol.viewBox}
             width="100%"
             height="100%"
             preserveAspectRatio="xMidYMid meet"

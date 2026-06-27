@@ -15,15 +15,28 @@ menu to prioritise from.
 - Export: native `.pidproj`, PNG, SVG, PDF; BOM CSV.
 - Auto-save to localStorage.
 
-## Iteration 2 — Diagram fidelity
+## ✅ Iteration 2 — Pipe data, symbols & editing UX (done)
+
+- **Pipe properties** — every edge now carries material, ID/OD/thickness (with
+  the 2-of-3 `OD = ID + 2·thickness` constraint solver), optional ID tag,
+  manufacturer, part #, notes; pipes appear in the BOM.
+- **More symbols** — solenoid valve; pressure transducer, RTD, thermocouple,
+  flow meter, pressure gauge (ISA-style instrument bubbles).
+- **Tighter symbols** — per-symbol viewBox so ports hug the artwork.
+- **ID tag** replaces tag/name; quantity removed (one instance = one item).
+- **Mouse/keys** — middle-drag pan; left-drag box-select with window/crossing
+  (blue/green) by direction; `Ctrl+S` save, `Ctrl+O` open; unsaved-change
+  warnings on new/open/close.
+
+## Iteration 3 — Diagram fidelity
 
 - **Line/stream types** — process, signal, electrical, pneumatic; styled edges
   (dashed, double, with arrowheads) chosen per connection.
-- **ISA-style tag bubbles** for instruments (measured variable + loop number).
 - **Edge labels** (line numbers, sizes, specs) and routing options
   (orthogonal/step vs. smooth).
 - **Snap & align** guides, distribution helpers, grouping.
 - **Per-port semantics** — typed inlet/outlet ports instead of generic ports.
+- **Rotation-aware ports** — ports follow symbol rotation.
 
 ## Iteration 3 — Analysis & BOM depth
 

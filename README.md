@@ -13,8 +13,12 @@ Visual Paradigm and the panelled, professional feel of Altium Designer.
   vessels, pumps & compressors, heat transfer, valves, instruments, piping.
 - 🔗 **Connect anything** — every element exposes four ports; draw lines between
   any of them (loose connection mode, draw.io style).
-- 📐 **Scale, name, rotate** — resize handles on every element, editable
-  tag/name, rotation, plus per-item BOM metadata.
+- 🧪 **Pipe specs** — pipes are first-class items: material, ID/OD/wall thickness
+  (any 2 constrain the 3rd via `OD = ID + 2·t`), tag, manufacturer, part #, notes.
+- 📐 **Scale, tag, rotate** — resize handles on every element, editable ID tag,
+  rotation, plus per-item BOM metadata.
+- 🖱️ **CAD-style controls** — middle-drag to pan; left-drag to box-select
+  (drag right = enclose/blue, drag left = touch/green). `Ctrl+S` save, `Ctrl+O` open.
 - 🌗 **Light & dark mode** — one-click toggle, remembered between sessions.
 - 💾 **Native + portable export** — save/open the editable `.pidproj` format, or
   export a **PNG**, **SVG**, or printable **PDF**.

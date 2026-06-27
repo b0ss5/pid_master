@@ -43,18 +43,19 @@ No backend. State persists to `localStorage` (`pid_master:document`,
 src/
   main.tsx                 App bootstrap
   App.tsx                  Layout: Toolbar + (Palette | Canvas | RightPanel)
-  types.ts                 SymbolDef, EquipmentData, EquipmentNode, PidDocument
+  types.ts                 SymbolDef, EquipmentData, PipeData, *Node/*Edge, PidDocument
   store/useStore.ts        Zustand store — ALL state & mutations live here
   lib/
     symbols.ts             The component library (data-driven). Add symbols here.
+    pipe.ts                Pipe defaults + OD=ID+2·thickness constraint solver
     export.ts              saveProject/openProject, exportImage, exportPDF, BOM CSV
   components/
-    Toolbar.tsx            New/Open/Save, Export menu, dup/delete/fit, theme toggle
+    Toolbar.tsx            New/Open/Save (Ctrl+S/O), Export menu, dup/delete/fit, theme
     Palette.tsx            Left library; drag-drop + click-to-add, search
-    Canvas.tsx             React Flow wrapper, drop handling, selection
+    Canvas.tsx             React Flow wrapper, drop, selection, mouse/box-select
     RightPanel.tsx         Tabs: Properties | BOM | Analysis
-    PropertiesPanel.tsx    Edit selected node (tag, size, rotation, BOM fields)
-    BomPanel.tsx           Per-instance BOM table + CSV export
+    PropertiesPanel.tsx    Edit selected node OR pipe (size, rotation, BOM, pipe specs)
+    BomPanel.tsx           BOM table (equipment + pipes) + CSV export
     AnalysisPanel.tsx      Counts, category breakdown, validation checks
     nodes/EquipmentNode.tsx  Custom node: SVG symbol, 4 ports, resize handles
   styles/index.css         All styling + light/dark theme variables
@@ -69,14 +70,26 @@ src/
   `App.tsx` syncs `document.documentElement.dataset.theme` from the store. React
   Flow gets `colorMode={theme}`. Symbols use `currentColor` so they invert
   automatically — **don't hard-code symbol colors.**
-- **Symbols:** each `SymbolDef` is inline SVG drawn in a `0 0 100 100` viewBox,
-  strokes only (`fill="none"` is applied by the renderer; set
-  `fill="currentColor" stroke="none"` on a shape if you need a filled element).
-  `tagPrefix` drives auto-naming (e.g. `P-101`).
+- **Symbols:** each `SymbolDef` carries its own `viewBox` and SVG artwork
+  authored to **fill that viewBox** (with `defaultWidth/Height` matching its
+  aspect ratio) so the node bounding box — and therefore its ports — hug the
+  symbol tightly. Strokes use `currentColor`; set `fill="currentColor"
+  stroke="none"` on a shape for a filled element. Instrument bubbles may include
+  `<text>` (ISA tags). `tagPrefix` drives auto-naming (e.g. `P-101`).
+- **Pipes (edges):** every edge carries `PipeData` (tag, material, ID/OD/
+  thickness, manufacturer, part #, notes). `lib/pipe.ts` enforces
+  `OD = ID + 2·thickness`; the dimension named by `solveFor` is the derived
+  one. Edges are selectable; the Properties panel edits the selected node *or*
+  the selected pipe.
 - **Connections:** `ConnectionMode.Loose` + four `type="source"` handles per node
   let any port connect to any other (draw.io-style).
+- **Mouse/keys:** middle-drag pans; left-drag box-selects (drag right = window/
+  blue/enclose, drag left = crossing/green/touch). `Ctrl/Cmd+S` saves the
+  `.pidproj`, `Ctrl/Cmd+O` opens. A `dirty` flag (set by real edits, not by
+  React Flow's load-time measurement) drives unsaved-change warnings on
+  new/open/close.
 - **IDs:** node ids come from `nextId()` in the store; tag numbers from
-  per-prefix `counters`.
+  per-prefix `counters`. There is no quantity field — each instance is one item.
 
 ## Commands
 
@@ -97,9 +110,10 @@ Append one object to `SYMBOLS` in `src/lib/symbols.ts`:
   label: 'Needle Valve',
   category: 'Valves',          // new categories appear automatically
   tagPrefix: 'HV',
-  defaultWidth: 76,
-  defaultHeight: 60,
-  svg: '<path d="M18 32 L50 50 L18 68 Z M82 32 L50 50 L82 68 Z"/><path d="M50 38 V20"/>',
+  viewBox: '0 0 84 52',        // artwork fills this; size matches its aspect
+  defaultWidth: 84,
+  defaultHeight: 52,
+  svg: '<path d="M4 6 L42 26 L4 46 Z M80 6 L42 26 L80 46 Z"/><path d="M42 26 V8"/>',
 }
 ```
 

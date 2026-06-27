@@ -7,9 +7,10 @@ import { useStore } from '../store/useStore';
 const SYMBOL_STYLE: CSSProperties = {
   stroke: 'currentColor',
   fill: 'none',
-  strokeWidth: 5,
+  strokeWidth: 1.6,
   strokeLinecap: 'round',
   strokeLinejoin: 'round',
+  overflow: 'visible',
 };
 
 export default function Palette() {
@@ -71,7 +72,7 @@ export default function Palette() {
                     title={`${s.label} — drag onto canvas or click to add`}
                   >
                     <svg
-                      viewBox="0 0 100 100"
+                      viewBox={s.viewBox}
                       className="palette-svg"
                       style={SYMBOL_STYLE}
                       dangerouslySetInnerHTML={{ __html: s.svg }}

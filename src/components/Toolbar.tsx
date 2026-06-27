@@ -1,4 +1,10 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from 'react';
 import { useReactFlow } from '@xyflow/react';
 import {
   ChevronDown,
@@ -32,6 +38,7 @@ export default function Toolbar() {
   const deleteSelected = useStore((s) => s.deleteSelected);
   const duplicateSelected = useStore((s) => s.duplicateSelected);
   const selectedId = useStore((s) => s.selectedId);
+  const selectedEdgeId = useStore((s) => s.selectedEdgeId);
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
 
@@ -40,10 +47,27 @@ export default function Toolbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const exportBackground = theme === 'dark' ? '#0f172a' : '#ffffff';
+  const hasSelection = Boolean(selectedId || selectedEdgeId);
+
+  // Use getState() in handlers so keyboard shortcuts never see stale data.
+  const doSave = useCallback(() => {
+    const s = useStore.getState();
+    saveProject(s.nodes, s.edges);
+    s.markSaved();
+  }, []);
+
+  const confirmDiscard = useCallback((action: string) => {
+    return (
+      !useStore.getState().dirty ||
+      window.confirm(`You have unsaved changes. ${action}?`)
+    );
+  }, []);
+
+  const openFileDialog = useCallback(() => fileRef.current?.click(), []);
 
   const handleOpen = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && confirmDiscard('Opening a file will discard them — continue')) {
       try {
         const doc = await openProject(file);
         loadDocument(doc);
@@ -54,6 +78,28 @@ export default function Toolbar() {
     }
     event.target.value = '';
   };
+
+  const handleNew = useCallback(() => {
+    if (confirmDiscard('Start a new diagram and discard them')) newDocument();
+  }, [confirmDiscard, newDocument]);
+
+  // Ctrl/Cmd+S = save, Ctrl/Cmd+O = open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+      if (key === 's') {
+        e.preventDefault();
+        doSave();
+      } else if (key === 'o') {
+        e.preventDefault();
+        openFileDialog();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [doSave, openFileDialog]);
 
   const run = async (fn: () => void | Promise<void>) => {
     setMenuOpen(false);
@@ -86,23 +132,13 @@ export default function Toolbar() {
       </div>
 
       <div className="toolbar-group">
-        <button
-          className="tb-btn"
-          onClick={() => {
-            if (
-              nodes.length === 0 ||
-              confirm('Start a new diagram? Unsaved changes will be cleared.')
-            ) {
-              newDocument();
-            }
-          }}
-        >
+        <button className="tb-btn" onClick={handleNew}>
           <FilePlus2 size={16} /> New
         </button>
-        <button className="tb-btn" onClick={() => fileRef.current?.click()}>
+        <button className="tb-btn" onClick={openFileDialog} title="Open (Ctrl+O)">
           <FolderOpen size={16} /> Open
         </button>
-        <button className="tb-btn" onClick={() => saveProject(nodes, edges)}>
+        <button className="tb-btn" onClick={doSave} title="Save (Ctrl+S)">
           <Save size={16} /> Save
         </button>
         <input
@@ -126,7 +162,7 @@ export default function Toolbar() {
           </button>
           {menuOpen && (
             <div className="dropdown-menu" onMouseLeave={() => setMenuOpen(false)}>
-              <button onClick={() => run(() => saveProject(nodes, edges))}>
+              <button onClick={() => run(doSave)}>
                 <FileJson size={15} /> Project (.pidproj)
               </button>
               <button
@@ -170,7 +206,7 @@ export default function Toolbar() {
         </button>
         <button
           className="tb-btn icon"
-          disabled={!selectedId}
+          disabled={!hasSelection}
           onClick={deleteSelected}
           title="Delete selected"
         >

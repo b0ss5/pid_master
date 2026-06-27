@@ -6,7 +6,7 @@ import { getSymbol } from '../lib/symbols';
 export default function AnalysisPanel() {
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
-  const setSelected = useStore((s) => s.setSelected);
+  const selectNode = useStore((s) => s.selectNode);
 
   const stats = useMemo(() => {
     const connected = new Set<string>();
@@ -87,7 +87,7 @@ export default function AnalysisPanel() {
             {stats.unconnected.length > 0 && (
               <div className="check-tags">
                 {stats.unconnected.map((u) => (
-                  <button key={u.id} onClick={() => setSelected(u.id)}>
+                  <button key={u.id} onClick={() => selectNode(u.id)}>
                     {u.tag}
                   </button>
                 ))}
@@ -107,7 +107,7 @@ export default function AnalysisPanel() {
             {stats.missingPart.length > 0 && (
               <div className="check-tags">
                 {stats.missingPart.map((u) => (
-                  <button key={u.id} onClick={() => setSelected(u.id)}>
+                  <button key={u.id} onClick={() => selectNode(u.id)}>
                     {u.tag}
                   </button>
                 ))}

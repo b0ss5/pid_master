@@ -790,6 +790,101 @@ textarea {
   background: var(--surface);
 }
 
+/* ---- Direction-aware box selection ---------------------------------- */
+/* Drag right = window (fully enclosed, blue); drag left = crossing (touch,
+   green) — mirroring CAD selection conventions. */
+.canvas[data-seldir='right'] .react-flow__selection {
+  background: rgba(37, 99, 235, 0.1);
+  border: 1.5px solid var(--accent);
+}
+
+.canvas[data-seldir='left'] .react-flow__selection {
+  background: rgba(22, 163, 74, 0.12);
+  border: 1.5px dashed var(--ok);
+}
+
+/* Uniform, crisp line weight for palette icons regardless of symbol scale. */
+.palette-svg * {
+  vector-effect: non-scaling-stroke;
+}
+
+/* ---- Pipe properties ------------------------------------------------ */
+
+.props-symbol-tag.pipe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.solve-for {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.solve-for > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.segmented button {
+  flex: 1;
+  padding: 7px 4px;
+  border: none;
+  border-right: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.segmented button:last-child {
+  border-right: none;
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.derived-badge {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.field input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.pipe-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
 /* ---- Scrollbars ----------------------------------------------------- */
 
 *::-webkit-scrollbar {

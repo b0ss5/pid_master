@@ -1,8 +1,7 @@
 import { toPng, toSvg } from 'html-to-image';
 import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
 import { jsPDF } from 'jspdf';
-import type { Edge } from '@xyflow/react';
-import type { EquipmentNode, PidDocument } from '../types';
+import type { EquipmentNode, PidDocument, PipeEdge } from '../types';
 
 const VIEWPORT_SELECTOR = '.react-flow__viewport';
 
@@ -21,7 +20,7 @@ function stamp(): string {
 
 /* ---- Native project format (.pidproj) -------------------------------- */
 
-export function saveProject(nodes: EquipmentNode[], edges: Edge[]): void {
+export function saveProject(nodes: EquipmentNode[], edges: PipeEdge[]): void {
   const doc: PidDocument = {
     app: 'pid_master',
     version: 1,
@@ -135,11 +134,10 @@ export interface BomRow {
   description: string;
   manufacturer: string;
   partNumber: string;
-  quantity: number;
 }
 
 export function exportBomCsv(rows: BomRow[]): void {
-  const header = ['Tag', 'Description', 'Manufacturer', 'Part Number', 'Qty'];
+  const header = ['Tag', 'Description', 'Manufacturer', 'Part Number'];
   const escape = (v: string | number) => {
     const s = String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -147,7 +145,7 @@ export function exportBomCsv(rows: BomRow[]): void {
   const lines = [
     header.join(','),
     ...rows.map((r) =>
-      [r.tag, r.description, r.manufacturer, r.partNumber, r.quantity]
+      [r.tag, r.description, r.manufacturer, r.partNumber]
         .map(escape)
         .join(','),
     ),

@@ -1,21 +1,26 @@
-import { MousePointerSquareDashed, RotateCw } from 'lucide-react';
+import { MousePointerSquareDashed, RotateCw, Spline } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { getSymbol } from '../lib/symbols';
+import { createPipeData, recomputePipe } from '../lib/pipe';
+import type { PipeData, PipeSolveFor } from '../types';
 
-export default function PropertiesPanel() {
-  const selectedId = useStore((s) => s.selectedId);
-  const node = useStore((s) => s.nodes.find((n) => n.id === s.selectedId));
+const SOLVE_OPTIONS: { id: PipeSolveFor; label: string }[] = [
+  { id: 'id', label: 'ID' },
+  { id: 'od', label: 'OD' },
+  { id: 'thickness', label: 'Thickness' },
+];
+
+const DIM_FIELDS: { key: keyof PipeData; solve: PipeSolveFor; label: string }[] = [
+  { key: 'innerDiameter', solve: 'id', label: 'Inner Ø (ID)' },
+  { key: 'outerDiameter', solve: 'od', label: 'Outer Ø (OD)' },
+  { key: 'thickness', solve: 'thickness', label: 'Wall thickness' },
+];
+
+function EquipmentProperties() {
+  const selectedId = useStore((s) => s.selectedId)!;
+  const node = useStore((s) => s.nodes.find((n) => n.id === s.selectedId))!;
   const updateNodeData = useStore((s) => s.updateNodeData);
   const setNodeSize = useStore((s) => s.setNodeSize);
-
-  if (!node || !selectedId) {
-    return (
-      <div className="panel-empty">
-        <MousePointerSquareDashed size={28} />
-        <p>Select an element to edit its properties.</p>
-      </div>
-    );
-  }
 
   const symbol = getSymbol(node.data.symbolId);
   const width = Math.round(node.width ?? 0);
@@ -26,7 +31,7 @@ export default function PropertiesPanel() {
       <div className="props-symbol-tag">{symbol?.label ?? 'Unknown'}</div>
 
       <label className="field">
-        <span>Tag / Name</span>
+        <span>ID Tag</span>
         <input
           value={node.data.label}
           onChange={(e) => updateNodeData(selectedId, { label: e.target.value })}
@@ -97,20 +102,6 @@ export default function PropertiesPanel() {
       </label>
 
       <label className="field">
-        <span>Quantity</span>
-        <input
-          type="number"
-          min={1}
-          value={node.data.quantity}
-          onChange={(e) =>
-            updateNodeData(selectedId, {
-              quantity: Math.max(1, Number(e.target.value) || 1),
-            })
-          }
-        />
-      </label>
-
-      <label className="field">
         <span>Notes</span>
         <textarea
           rows={3}
@@ -118,6 +109,128 @@ export default function PropertiesPanel() {
           onChange={(e) => updateNodeData(selectedId, { notes: e.target.value })}
         />
       </label>
+    </div>
+  );
+}
+
+function PipeProperties() {
+  const edge = useStore((s) => s.edges.find((e) => e.id === s.selectedEdgeId))!;
+  const updateEdgeData = useStore((s) => s.updateEdgeData);
+
+  const pipe: PipeData = edge.data ?? createPipeData();
+
+  const update = (patch: Partial<PipeData>) =>
+    updateEdgeData(edge.id, recomputePipe({ ...pipe, ...patch }));
+
+  const onDim = (key: keyof PipeData, raw: string) => {
+    const trimmed = raw.trim();
+    const value = trimmed === '' ? null : Number(trimmed);
+    update({ [key]: value !== null && Number.isNaN(value) ? null : value });
+  };
+
+  return (
+    <div className="props">
+      <div className="props-symbol-tag pipe">
+        <Spline size={13} /> Pipe / Line
+      </div>
+
+      <label className="field">
+        <span>ID Tag (optional)</span>
+        <input
+          value={pipe.tag}
+          onChange={(e) => update({ tag: e.target.value })}
+          placeholder="e.g. P-1001-CS"
+        />
+      </label>
+
+      <label className="field">
+        <span>Material</span>
+        <input
+          value={pipe.material}
+          onChange={(e) => update({ material: e.target.value })}
+          placeholder="e.g. CS A106-B, 316SS, PVC"
+        />
+      </label>
+
+      <div className="props-divider">Dimensions</div>
+      <div className="solve-for">
+        <span>Solve for</span>
+        <div className="segmented">
+          {SOLVE_OPTIONS.map((o) => (
+            <button
+              key={o.id}
+              className={pipe.solveFor === o.id ? 'active' : ''}
+              onClick={() => update({ solveFor: o.id })}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {DIM_FIELDS.map((f) => {
+        const derived = pipe.solveFor === f.solve;
+        const value = pipe[f.key] as number | null;
+        return (
+          <label className="field" key={f.key as string}>
+            <span>
+              {f.label}
+              {derived && <em className="derived-badge">auto</em>}
+            </span>
+            <input
+              type="number"
+              step="any"
+              min={0}
+              value={value === null ? '' : value}
+              disabled={derived}
+              onChange={(e) => onDim(f.key, e.target.value)}
+              placeholder={derived ? 'computed' : ''}
+            />
+          </label>
+        );
+      })}
+
+      <div className="props-divider">Bill of Materials</div>
+
+      <label className="field">
+        <span>Manufacturer</span>
+        <input
+          value={pipe.manufacturer}
+          onChange={(e) => update({ manufacturer: e.target.value })}
+        />
+      </label>
+
+      <label className="field">
+        <span>Part Number</span>
+        <input
+          value={pipe.partNumber}
+          onChange={(e) => update({ partNumber: e.target.value })}
+        />
+      </label>
+
+      <label className="field">
+        <span>Notes</span>
+        <textarea
+          rows={3}
+          value={pipe.notes}
+          onChange={(e) => update({ notes: e.target.value })}
+        />
+      </label>
+    </div>
+  );
+}
+
+export default function PropertiesPanel() {
+  const selectedId = useStore((s) => s.selectedId);
+  const selectedEdgeId = useStore((s) => s.selectedEdgeId);
+
+  if (selectedId) return <EquipmentProperties />;
+  if (selectedEdgeId) return <PipeProperties />;
+
+  return (
+    <div className="panel-empty">
+      <MousePointerSquareDashed size={28} />
+      <p>Select an element or pipe to edit its properties.</p>
     </div>
   );
 }

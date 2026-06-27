@@ -4,41 +4,57 @@ import {
   applyEdgeChanges,
   applyNodeChanges,
   type Connection,
-  type Edge,
   type EdgeChange,
   type NodeChange,
   type XYPosition,
 } from '@xyflow/react';
-import type { EquipmentData, EquipmentNode, PidDocument, Theme } from '../types';
+import type {
+  EquipmentData,
+  EquipmentNode,
+  PidDocument,
+  PipeData,
+  PipeEdge,
+  Theme,
+} from '../types';
 import { getSymbol } from '../lib/symbols';
+import { createPipeData } from '../lib/pipe';
 
 const STORAGE_KEY = 'pid_master:document';
 const THEME_KEY = 'pid_master:theme';
 
 interface AppState {
   nodes: EquipmentNode[];
-  edges: Edge[];
+  edges: PipeEdge[];
   selectedId: string | null;
+  selectedEdgeId: string | null;
   theme: Theme;
+  /** True when there are changes not yet saved to a `.pidproj` file. */
+  dirty: boolean;
   /** Monotonic counter so each new instance of a symbol gets a unique tag. */
   counters: Record<string, number>;
 
   // React Flow plumbing
   onNodesChange: (changes: NodeChange<EquipmentNode>[]) => void;
-  onEdgesChange: (changes: EdgeChange[]) => void;
+  onEdgesChange: (changes: EdgeChange<PipeEdge>[]) => void;
   onConnect: (connection: Connection) => void;
 
   // Editing actions
   addNode: (symbolId: string, position: XYPosition) => void;
   updateNodeData: (id: string, patch: Partial<EquipmentData>) => void;
   setNodeSize: (id: string, width: number, height: number) => void;
-  setSelected: (id: string | null) => void;
+  updateEdgeData: (id: string, data: PipeData) => void;
   deleteSelected: () => void;
   duplicateSelected: () => void;
+
+  // Selection
+  setSelection: (nodeId: string | null, edgeId: string | null) => void;
+  selectNode: (id: string) => void;
+  selectEdge: (id: string) => void;
 
   // Document actions
   newDocument: () => void;
   loadDocument: (doc: PidDocument) => void;
+  markSaved: () => void;
 
   // Theme
   toggleTheme: () => void;
@@ -59,7 +75,7 @@ function persist(state: Pick<AppState, 'nodes' | 'edges'>) {
   }
 }
 
-function loadPersisted(): { nodes: EquipmentNode[]; edges: Edge[] } {
+function loadPersisted(): { nodes: EquipmentNode[]; edges: PipeEdge[] } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { nodes: [], edges: [] };
@@ -79,6 +95,16 @@ function loadTheme(): Theme {
   return prefersDark ? 'dark' : 'light';
 }
 
+/**
+ * True if a change is a real user edit. We deliberately ignore `select` and
+ * `dimensions` changes: React Flow emits `dimensions` while measuring nodes on
+ * load, which must not mark a freshly-opened document as unsaved.
+ */
+const DIRTYING_CHANGES = new Set(['add', 'remove', 'position', 'replace']);
+function hasContentChange(changes: { type: string }[]): boolean {
+  return changes.some((c) => DIRTYING_CHANGES.has(c.type));
+}
+
 let idSeq = Date.now();
 const nextId = () => `n_${(idSeq++).toString(36)}`;
 
@@ -88,26 +114,35 @@ export const useStore = create<AppState>((set, get) => ({
   nodes: persisted.nodes,
   edges: persisted.edges,
   selectedId: null,
+  selectedEdgeId: null,
   theme: loadTheme(),
+  dirty: false,
   counters: {},
 
   onNodesChange: (changes) => {
-    set({ nodes: applyNodeChanges(changes, get().nodes) });
+    set((s) => ({
+      nodes: applyNodeChanges(changes, s.nodes),
+      dirty: s.dirty || hasContentChange(changes),
+    }));
     persist(get());
   },
 
   onEdgesChange: (changes) => {
-    set({ edges: applyEdgeChanges(changes, get().edges) });
+    set((s) => ({
+      edges: applyEdgeChanges(changes, s.edges) as PipeEdge[],
+      dirty: s.dirty || hasContentChange(changes),
+    }));
     persist(get());
   },
 
   onConnect: (connection) => {
-    set({
+    set((s) => ({
       edges: addEdge(
-        { ...connection, type: 'smoothstep', animated: false },
-        get().edges,
-      ),
-    });
+        { ...connection, type: 'smoothstep', data: createPipeData() },
+        s.edges,
+      ) as PipeEdge[],
+      dirty: true,
+    }));
     persist(get());
   },
 
@@ -130,42 +165,65 @@ export const useStore = create<AppState>((set, get) => ({
         rotation: 0,
         manufacturer: '',
         partNumber: '',
-        quantity: 1,
         notes: '',
       },
     };
-    set({ nodes: [...get().nodes, node], counters, selectedId: node.id });
+    set({
+      nodes: [...get().nodes, node],
+      counters,
+      selectedId: node.id,
+      selectedEdgeId: null,
+      dirty: true,
+    });
     persist(get());
   },
 
   updateNodeData: (id, patch) => {
-    set({
-      nodes: get().nodes.map((n) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
         n.id === id ? { ...n, data: { ...n.data, ...patch } } : n,
       ),
-    });
+      dirty: true,
+    }));
     persist(get());
   },
 
   setNodeSize: (id, width, height) => {
-    set({
-      nodes: get().nodes.map((n) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
         n.id === id ? { ...n, width, height } : n,
       ),
-    });
+      dirty: true,
+    }));
     persist(get());
   },
 
-  setSelected: (id) => set({ selectedId: id }),
+  updateEdgeData: (id, data) => {
+    set((s) => ({
+      edges: s.edges.map((e) => (e.id === id ? { ...e, data } : e)),
+      dirty: true,
+    }));
+    persist(get());
+  },
 
   deleteSelected: () => {
-    const id = get().selectedId;
-    if (!id) return;
-    set({
-      nodes: get().nodes.filter((n) => n.id !== id),
-      edges: get().edges.filter((e) => e.source !== id && e.target !== id),
-      selectedId: null,
-    });
+    const { selectedId, selectedEdgeId } = get();
+    if (selectedId) {
+      set((s) => ({
+        nodes: s.nodes.filter((n) => n.id !== selectedId),
+        edges: s.edges.filter(
+          (e) => e.source !== selectedId && e.target !== selectedId,
+        ),
+        selectedId: null,
+        dirty: true,
+      }));
+    } else if (selectedEdgeId) {
+      set((s) => ({
+        edges: s.edges.filter((e) => e.id !== selectedEdgeId),
+        selectedEdgeId: null,
+        dirty: true,
+      }));
+    }
     persist(get());
   },
 
@@ -183,12 +241,43 @@ export const useStore = create<AppState>((set, get) => ({
       selected: false,
       data: { ...original.data, label: `${original.data.label}-copy` },
     };
-    set({ nodes: [...get().nodes, copy], selectedId: copy.id });
+    set((s) => ({
+      nodes: [...s.nodes.map((n) => ({ ...n, selected: false })), { ...copy, selected: true }],
+      selectedId: copy.id,
+      selectedEdgeId: null,
+      dirty: true,
+    }));
     persist(get());
   },
 
+  setSelection: (nodeId, edgeId) =>
+    set({ selectedId: nodeId, selectedEdgeId: edgeId }),
+
+  selectNode: (id) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) => ({ ...n, selected: n.id === id })),
+      edges: s.edges.map((e) => ({ ...e, selected: false })),
+      selectedId: id,
+      selectedEdgeId: null,
+    })),
+
+  selectEdge: (id) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) => ({ ...n, selected: false })),
+      edges: s.edges.map((e) => ({ ...e, selected: e.id === id })),
+      selectedId: null,
+      selectedEdgeId: id,
+    })),
+
   newDocument: () => {
-    set({ nodes: [], edges: [], selectedId: null, counters: {} });
+    set({
+      nodes: [],
+      edges: [],
+      selectedId: null,
+      selectedEdgeId: null,
+      counters: {},
+      dirty: false,
+    });
     persist(get());
   },
 
@@ -197,10 +286,14 @@ export const useStore = create<AppState>((set, get) => ({
       nodes: doc.nodes ?? [],
       edges: doc.edges ?? [],
       selectedId: null,
+      selectedEdgeId: null,
       counters: {},
+      dirty: false,
     });
     persist(get());
   },
+
+  markSaved: () => set({ dirty: false }),
 
   toggleTheme: () => {
     const theme: Theme = get().theme === 'dark' ? 'light' : 'dark';
