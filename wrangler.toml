@@ -1,0 +1,6 @@
+# Cloudflare Pages config — enables CLI deploys as a backup to the Git
+# integration:  `npm run deploy`  (builds, then uploads dist/).
+# https://developers.cloudflare.com/pages/functions/wrangler-configuration/
+name = "pid-master"
+compatibility_date = "2026-06-29"
+pages_build_output_dir = "dist"
