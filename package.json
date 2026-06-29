@@ -10,7 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "deploy": "vite build && wrangler pages deploy"
+    "deploy": "vite build && wrangler deploy"
   },
   "dependencies": {
     "@xyflow/react": "^12.3.5",

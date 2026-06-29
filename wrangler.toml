@@ -1,6 +1,10 @@
-# Cloudflare Pages config — enables CLI deploys as a backup to the Git
-# integration:  `npm run deploy`  (builds, then uploads dist/).
-# https://developers.cloudflare.com/pages/functions/wrangler-configuration/
+# Cloudflare Worker (static assets) config. Serves the built Vite SPA in dist/
+# directly from Cloudflare's edge — no server-side Worker code needed.
+# https://developers.cloudflare.com/workers/static-assets/
 name = "pid-master"
 compatibility_date = "2026-06-29"
-pages_build_output_dir = "dist"
+
+[assets]
+directory = "./dist"
+# Serve index.html for any unmatched path (safe for an SPA).
+not_found_handling = "single-page-application"
