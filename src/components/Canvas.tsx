@@ -46,7 +46,54 @@ export default function Canvas() {
   const setSelection = useStore((s) => s.setSelection);
   const duplicateNodeInPlace = useStore((s) => s.duplicateNodeInPlace);
 
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView, getViewport, setViewport } =
+    useReactFlow();
+
+  // Trackpad two-finger scroll pans (panOnScroll) and pinch zooms
+  // (zoomOnPinch) — maps.app style. A discrete mouse wheel, however, should
+  // zoom. Both gestures arrive as `wheel` events, so we sniff the wheel and,
+  // when it looks like a real mouse wheel, intercept it (capture phase, before
+  // React Flow's pan handler) and zoom toward the cursor instead.
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      // Pinch-zoom sets ctrlKey — leave it to React Flow's zoomOnPinch.
+      if (e.ctrlKey) return;
+      // Line/page deltas are classic mouse wheels; otherwise treat a clean,
+      // vertical-only, integer tick as a wheel and everything else (fractional
+      // momentum, any horizontal component, fine deltas) as a trackpad pan.
+      const isMouseWheel =
+        e.deltaMode !== 0 ||
+        (e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 40);
+      if (!isMouseWheel) return;
+
+      // Hijack the wheel before React Flow pans, and zoom about the pointer.
+      e.preventDefault();
+      e.stopPropagation();
+
+      const { x, y, zoom } = getViewport();
+      const rect = el.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+
+      const factor = Math.exp(-e.deltaY * 0.002);
+      const nextZoom = Math.min(4, Math.max(0.1, zoom * factor));
+      const ratio = nextZoom / zoom;
+
+      // Keep the flow point under the cursor pinned while zooming.
+      setViewport({
+        x: px - (px - x) * ratio,
+        y: py - (py - y) * ratio,
+        zoom: nextZoom,
+      });
+    };
+
+    el.addEventListener('wheel', onWheel, { capture: true, passive: false });
+    return () => el.removeEventListener('wheel', onWheel, { capture: true });
+  }, [getViewport, setViewport]);
 
   // Alt = smooth (un-snapped) drag; f = fit view.
   const [altPressed, setAltPressed] = useState(false);
@@ -147,6 +194,7 @@ export default function Canvas() {
 
   return (
     <div
+      ref={wrapperRef}
       className="canvas"
       data-seldir={selectDir ?? undefined}
       onDrop={onDrop}
@@ -171,6 +219,9 @@ export default function Canvas() {
         multiSelectionKeyCode="Shift"
         defaultEdgeOptions={{ type: 'smoothstep' }}
         panOnDrag={[1]}
+        panOnScroll
+        zoomOnScroll={false}
+        zoomOnPinch
         selectionOnDrag
         selectionKeyCode={null}
         selectionMode={selectionMode}
