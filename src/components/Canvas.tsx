@@ -16,12 +16,16 @@ import {
   SelectionMode,
   useReactFlow,
   type Node,
+  type NodeChange,
   type OnSelectionChangeParams,
 } from '@xyflow/react';
-import { useStore } from '../store/useStore';
+import type { EquipmentNode as EquipmentNodeType } from '../types';
+import { snapCenter, useStore } from '../store/useStore';
 import EquipmentNode from './nodes/EquipmentNode';
+import PipeEdge from './edges/PipeEdge';
 
 const nodeTypes = { equipment: EquipmentNode };
+const edgeTypes = { pipe: PipeEdge };
 
 function isEditableTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
@@ -39,12 +43,14 @@ export default function Canvas() {
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
   const theme = useStore((s) => s.theme);
-  const onNodesChange = useStore((s) => s.onNodesChange);
+  const rawOnNodesChange = useStore((s) => s.onNodesChange);
   const onEdgesChange = useStore((s) => s.onEdgesChange);
   const onConnect = useStore((s) => s.onConnect);
   const addNode = useStore((s) => s.addNode);
   const setSelection = useStore((s) => s.setSelection);
-  const duplicateNodeInPlace = useStore((s) => s.duplicateNodeInPlace);
+  const duplicateDragSelection = useStore((s) => s.duplicateDragSelection);
+  const copySelection = useStore((s) => s.copySelection);
+  const pasteClipboard = useStore((s) => s.pasteClipboard);
 
   const { screenToFlowPosition, fitView, getViewport, setViewport } =
     useReactFlow();
@@ -95,18 +101,28 @@ export default function Canvas() {
     return () => el.removeEventListener('wheel', onWheel, { capture: true });
   }, [getViewport, setViewport]);
 
-  // Alt = smooth (un-snapped) drag; f = fit view.
+  // Alt = smooth (un-snapped) drag; f = fit view; Ctrl/Cmd+C / +V = copy/paste.
   const [altPressed, setAltPressed] = useState(false);
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'Alt') {
         setAltPressed(true);
+      } else if (isEditableTarget(e.target)) {
+        // Typing in the properties panel — leave every shortcut alone.
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+        const key = e.key.toLowerCase();
+        if (key === 'c') {
+          e.preventDefault();
+          copySelection();
+        } else if (key === 'v') {
+          e.preventDefault();
+          pasteClipboard();
+        }
       } else if (
         (e.key === 'f' || e.key === 'F') &&
         !e.ctrlKey &&
         !e.metaKey &&
-        !e.altKey &&
-        !isEditableTarget(e.target)
+        !e.altKey
       ) {
         e.preventDefault();
         fitView({ padding: 0.2, duration: 300 });
@@ -124,7 +140,7 @@ export default function Canvas() {
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', reset);
     };
-  }, [fitView]);
+  }, [fitView, copySelection, pasteClipboard]);
 
   // Direction-aware box selection: drag right = window (fully enclosed, blue),
   // drag left = crossing (touch, green) — mirroring CAD tools.
@@ -133,6 +149,29 @@ export default function Canvas() {
   );
   const [selectDir, setSelectDir] = useState<'right' | 'left' | null>(null);
   const dragStartX = useRef<number | null>(null);
+
+  // Snap dragged node *centers* to the grid so aligned elements connect with
+  // straight, bend-free pipes. Alt = free (un-snapped); resize batches (which
+  // carry `dimensions` changes) are passed through untouched.
+  const onNodesChange = useCallback(
+    (changes: NodeChange<EquipmentNodeType>[]) => {
+      const resizing = changes.some((c) => c.type === 'dimensions');
+      if (altPressed || resizing) {
+        rawOnNodesChange(changes);
+        return;
+      }
+      const snapped = changes.map((c) => {
+        if (c.type !== 'position' || !c.position) return c;
+        const node = nodes.find((n) => n.id === c.id);
+        const w = node?.width ?? 0;
+        const h = node?.height ?? 0;
+        if (!w || !h) return c;
+        return { ...c, position: snapCenter(c.position.x, c.position.y, w, h) };
+      });
+      rawOnNodesChange(snapped);
+    },
+    [altPressed, nodes, rawOnNodesChange],
+  );
 
   const onDrop = useCallback(
     (event: DragEvent) => {
@@ -174,12 +213,13 @@ export default function Canvas() {
     setSelectDir(null);
   }, []);
 
-  // Ctrl/Cmd-drag a node to leave a duplicate behind. (DOM event, not React's.)
+  // Ctrl/Cmd-drag: park a copy of the selection at the source and drag the
+  // duplicates away. (DOM event, not React's.)
   const onNodeDragStart = useCallback(
     (event: globalThis.MouseEvent | TouchEvent, node: Node) => {
-      if (event.ctrlKey || event.metaKey) duplicateNodeInPlace(node.id);
+      if (event.ctrlKey || event.metaKey) duplicateDragSelection(node.id);
     },
-    [duplicateNodeInPlace],
+    [duplicateDragSelection],
   );
 
   const onSelectionChange = useCallback(
@@ -208,6 +248,7 @@ export default function Canvas() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -217,7 +258,7 @@ export default function Canvas() {
         colorMode={theme}
         deleteKeyCode={['Delete', 'Backspace']}
         multiSelectionKeyCode="Shift"
-        defaultEdgeOptions={{ type: 'smoothstep' }}
+        defaultEdgeOptions={{ type: 'pipe' }}
         panOnDrag={[1]}
         panOnScroll
         zoomOnScroll={false}
@@ -228,8 +269,6 @@ export default function Canvas() {
         minZoom={0.1}
         maxZoom={4}
         fitView
-        snapToGrid={!altPressed}
-        snapGrid={[8, 8]}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <Controls />

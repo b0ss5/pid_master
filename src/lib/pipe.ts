@@ -12,6 +12,7 @@ export function createPipeData(): PipeData {
     manufacturer: '',
     partNumber: '',
     notes: '',
+    waypoints: [],
   };
 }
 

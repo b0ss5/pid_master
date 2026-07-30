@@ -43,6 +43,44 @@ export const SYMBOLS: SymbolDef[] = [
     svg: '<rect x="8" y="6" width="44" height="132" rx="22"/><path d="M8 44 H52 M8 72 H52 M8 100 H52"/>',
   },
 
+  // ---- Gas Storage -----------------------------------------------------
+  {
+    id: 'gas-cylinder',
+    label: 'Gas Bottle',
+    category: 'Gas Storage',
+    tagPrefix: 'CYL',
+    viewBox: '0 0 52 120',
+    defaultWidth: 52,
+    defaultHeight: 120,
+    // Two shapes only: the domed-shoulder body, and a trapezoidal valve cap.
+    // The cap's base is left open and its ends (18,32.5)/(34,32.5) sit on the
+    // dome curve, so nothing cuts across the shoulder.
+    svg: '<path d="M12 44 V108 A6 6 0 0 0 18 114 H34 A6 6 0 0 0 40 108 V44 A14 14 0 0 0 12 44 Z"/><path d="M18 32.5 L22 20 H30 L34 32.5"/>',
+  },
+  {
+    id: 'gas-cylinder-bank',
+    label: 'Cylinder Bank',
+    category: 'Gas Storage',
+    tagPrefix: 'GBK',
+    viewBox: '0 0 116 116',
+    defaultWidth: 116,
+    defaultHeight: 116,
+    // Three bottles on a shared manifold header with an outlet takeoff.
+    svg: '<path d="M8 22 H108 M58 22 V12"/><g><path d="M10 44 V104 A4 4 0 0 0 14 108 H26 A4 4 0 0 0 30 104 V44 A10 10 0 0 0 10 44 Z"/><rect x="17" y="30" width="6" height="14"/></g><g><path d="M48 44 V104 A4 4 0 0 0 52 108 H64 A4 4 0 0 0 68 104 V44 A10 10 0 0 0 48 44 Z"/><rect x="55" y="30" width="6" height="14"/></g><g><path d="M86 44 V104 A4 4 0 0 0 90 108 H102 A4 4 0 0 0 106 104 V44 A10 10 0 0 0 86 44 Z"/><rect x="93" y="30" width="6" height="14"/></g>',
+  },
+  {
+    id: 'copv',
+    label: 'COPV',
+    category: 'Gas Storage',
+    tagPrefix: 'PV',
+    viewBox: '0 0 60 128',
+    defaultWidth: 60,
+    defaultHeight: 128,
+    // Composite overwrapped pressure vessel: domed-end capsule with a top
+    // boss and dome seam lines suggesting the wrap-to-liner transition.
+    svg: '<path d="M10 44 V84 A20 20 0 0 0 50 84 V44 A20 20 0 0 0 10 44 Z"/><path d="M10 44 H50 M10 84 H50"/><rect x="24" y="10" width="12" height="16" rx="2"/>',
+  },
+
   // ---- Pumps & Compressors --------------------------------------------
   {
     id: 'pump-centrifugal',
@@ -157,6 +195,30 @@ export const SYMBOLS: SymbolDef[] = [
     defaultWidth: 84,
     defaultHeight: 84,
     svg: '<path d="M4 44 L42 62 L4 80 Z M80 44 L42 62 L80 80 Z"/><path d="M42 62 V28"/><path d="M24 28 A18 16 0 0 1 60 28 Z"/>',
+  },
+  {
+    id: 'valve-relief',
+    label: 'Pressure Relief Valve',
+    category: 'Valves',
+    tagPrefix: 'PSV',
+    viewBox: '0 0 84 100',
+    defaultWidth: 84,
+    defaultHeight: 100,
+    // Angle body (inlet below, outlet right) under a spring bonnet — the
+    // spring is what distinguishes a relief valve from a plain angle valve.
+    svg: '<path d="M30 72 L12 96 L48 96 Z"/><path d="M30 72 L80 54 L80 90 Z"/><path d="M30 72 V50"/><path d="M18 50 H42"/><path d="M22 50 L38 42 L22 34 L38 26 L22 18 L38 10"/><path d="M18 10 H42"/>',
+  },
+  {
+    id: 'valve-regulator',
+    label: 'Pressure Regulator',
+    category: 'Valves',
+    tagPrefix: 'PCV',
+    viewBox: '0 0 84 88',
+    defaultWidth: 84,
+    defaultHeight: 88,
+    // Globe body + domed diaphragm and adjusting screw: the self-contained
+    // spring-loaded regulator. The screw separates it from a control valve.
+    svg: '<path d="M4 48 L42 66 L4 84 Z M80 48 L42 66 L80 84 Z"/><path d="M42 66 V44"/><path d="M18 44 A24 24 0 0 1 66 44 Z"/><path d="M42 20 V8"/><path d="M30 8 H54"/>',
   },
   {
     id: 'valve-solenoid',
@@ -281,6 +343,40 @@ export const SYMBOLS: SymbolDef[] = [
     defaultWidth: 76,
     defaultHeight: 60,
     svg: '<rect x="6" y="10" width="64" height="40"/><path d="M6 10 L70 50 M40 10 L70 35 M6 32 L52 50"/>',
+  },
+  {
+    id: 'quick-disconnect',
+    label: 'Quick Disconnect',
+    category: 'Piping',
+    tagPrefix: 'QD',
+    viewBox: '0 0 84 52',
+    defaultWidth: 84,
+    defaultHeight: 52,
+    // Two flanged halves meeting at centre: the plug (left) seated in the
+    // socket (right).
+    svg: '<path d="M4 26 H30 M80 26 H54"/><path d="M30 8 V44 M54 8 V44"/><path d="M30 18 H44 V34 H30"/><path d="M54 14 H44 V38 H54"/>',
+  },
+  {
+    id: 'nozzle',
+    label: 'Nozzle',
+    category: 'Piping',
+    tagPrefix: 'N',
+    viewBox: '0 0 56 52',
+    defaultWidth: 56,
+    defaultHeight: 52,
+    // Flanged stub — open at the left where it lands on its vessel.
+    svg: '<path d="M4 18 H40 M4 34 H40"/><rect x="40" y="8" width="10" height="36"/>',
+  },
+  {
+    id: 'manifold',
+    label: 'Manifold',
+    category: 'Piping',
+    tagPrefix: 'MF',
+    viewBox: '0 0 124 60',
+    defaultWidth: 124,
+    defaultHeight: 60,
+    // Header block with a supply on top and three branch takeoffs below.
+    svg: '<rect x="8" y="10" width="108" height="20" rx="4"/><path d="M62 10 V4"/><path d="M30 30 V56 M62 30 V56 M94 30 V56"/>',
   },
 ];
 

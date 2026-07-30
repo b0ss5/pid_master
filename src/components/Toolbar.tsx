@@ -47,7 +47,11 @@ export default function Toolbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const exportBackground = theme === 'dark' ? '#0f172a' : '#ffffff';
-  const hasSelection = Boolean(selectedId || selectedEdgeId);
+  // `selectedId` is only set for a single node, so a multi-selection has to be
+  // read off the nodes themselves or these buttons grey out exactly when the
+  // user has picked the most to act on.
+  const hasNodeSelection = Boolean(selectedId) || nodes.some((n) => n.selected);
+  const hasSelection = hasNodeSelection || Boolean(selectedEdgeId);
 
   // Use getState() in handlers so keyboard shortcuts never see stale data.
   const doSave = useCallback(() => {
@@ -198,9 +202,9 @@ export default function Toolbar() {
       <div className="toolbar-group">
         <button
           className="tb-btn icon"
-          disabled={!selectedId}
+          disabled={!hasNodeSelection}
           onClick={duplicateSelected}
-          title="Duplicate selected"
+          title="Duplicate selected (Ctrl/Cmd+C, Ctrl/Cmd+V)"
         >
           <Copy size={16} />
         </button>

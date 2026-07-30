@@ -1,4 +1,4 @@
-import type { Edge, Node } from '@xyflow/react';
+import type { Edge, Node, XYPosition } from '@xyflow/react';
 
 /**
  * A symbol definition is a reusable, data-driven entry in the component
@@ -58,10 +58,16 @@ export interface PipeData {
   manufacturer: string;
   partNumber: string;
   notes: string;
+  /**
+   * User-placed bends, in absolute flow coordinates, ordered source → target.
+   * Empty means "auto-route" — the pipe falls back to a plain smoothstep path.
+   * Absolute, so bends stay put when an endpoint moves.
+   */
+  waypoints: XYPosition[];
   [key: string]: unknown;
 }
 
-export type PipeEdge = Edge<PipeData>;
+export type PipeEdge = Edge<PipeData, 'pipe'>;
 
 export type Theme = 'light' | 'dark';
 

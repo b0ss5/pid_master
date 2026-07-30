@@ -381,7 +381,8 @@ textarea {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 5px;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: text;
 }
 
 .equip-label-input {
@@ -427,6 +428,66 @@ textarea {
 
 .equip-resize-line {
   border-color: var(--accent);
+}
+
+/* Rotate grip, floating above the node's top edge while it's selected. */
+.equip-rotate {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.equip-rotate:active {
+  cursor: grabbing;
+}
+
+/* Stalk connecting the rotate grip to the node. */
+.equip-rotate::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 1px;
+  height: 12px;
+  background: var(--accent);
+}
+
+/* Bend grips on a selected pipe. Hollow ones add a new bend when dragged. */
+.pipe-handle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  background: var(--accent);
+  border: 1.5px solid var(--surface);
+  border-radius: 50%;
+  cursor: grab;
+  pointer-events: all;
+}
+
+.pipe-handle.insert {
+  background: var(--surface);
+  border-color: var(--accent);
+  opacity: 0.55;
+}
+
+.pipe-handle.insert:hover {
+  opacity: 1;
+}
+
+.pipe-handle:active {
+  cursor: grabbing;
 }
 
 .react-flow__edge-path {
@@ -835,6 +896,19 @@ textarea {
   gap: 6px;
   color: var(--ok);
   background: var(--ok-soft);
+}
+
+.props-symbol-tag.batch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.props-hint {
+  margin: -4px 0 2px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 
 .solve-for {

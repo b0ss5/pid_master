@@ -4,6 +4,7 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import {
   Handle,
@@ -11,11 +12,14 @@ import {
   Position,
   type NodeProps,
 } from '@xyflow/react';
+import { RotateCw } from 'lucide-react';
 import type { EquipmentNode as EquipmentNodeType } from '../../types';
 import { getSymbol } from '../../lib/symbols';
 import { useStore } from '../../store/useStore';
 
 const MIN_SIZE = 28;
+/** Rotation snap, in degrees. Alt while dragging rotates freely. */
+const ROTATE_SNAP = 15;
 
 const SYMBOL_STYLE: CSSProperties = {
   stroke: 'currentColor',
@@ -28,8 +32,8 @@ const SYMBOL_STYLE: CSSProperties = {
 
 /**
  * A single piece of equipment on the canvas: the library SVG, four connection
- * ports, resize handles (with Alt = symmetric/center scaling), and
- * double-click-to-rename of its ID tag.
+ * ports, resize handles (with Alt = symmetric/center scaling), a rotate handle,
+ * and double-click-to-rename of its ID tag.
  */
 function EquipmentNodeComponent({
   id,
@@ -44,6 +48,32 @@ function EquipmentNodeComponent({
   const resizeStart = useRef<{ x: number; y: number; w: number; h: number } | null>(
     null,
   );
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Rotate by dragging the handle around the node's centre. Reading the centre
+  // off the DOM keeps this correct at any zoom or pan.
+  const onRotateStart = (event: ReactPointerEvent) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    event.preventDefault();
+    const box = wrapRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+
+    const move = (e: PointerEvent) => {
+      // +90° because the handle sits above the node, i.e. at -90° in atan2 terms.
+      const deg = (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI + 90;
+      const stepped = e.altKey ? Math.round(deg) : Math.round(deg / ROTATE_SNAP) * ROTATE_SNAP;
+      updateNodeData(id, { rotation: ((stepped % 360) + 360) % 360 });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label);
@@ -69,6 +99,7 @@ function EquipmentNodeComponent({
 
   return (
     <div
+      ref={wrapRef}
       className="equip-node"
       onDoubleClick={(e) => {
         e.stopPropagation();
@@ -102,6 +133,17 @@ function EquipmentNodeComponent({
           return false;
         }}
       />
+
+      {selected && (
+        <div
+          className="equip-rotate nodrag nopan"
+          title={`Drag to rotate (${ROTATE_SNAP}° steps · Alt = free)`}
+          onPointerDown={onRotateStart}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          <RotateCw size={11} />
+        </div>
+      )}
 
       <Handle id="t" type="source" position={Position.Top} className="equip-port" />
       <Handle id="r" type="source" position={Position.Right} className="equip-port" />
@@ -137,7 +179,16 @@ function EquipmentNodeComponent({
           onDoubleClick={(e) => e.stopPropagation()}
         />
       ) : (
-        <div className="equip-label">{data.label}</div>
+        <div
+          className="equip-label nodrag"
+          title="Double-click to rename"
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            startEdit();
+          }}
+        >
+          {data.label}
+        </div>
       )}
     </div>
   );
